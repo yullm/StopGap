@@ -31,6 +31,13 @@ $RECYCLE.BIN/
 # Thumbnails
 ._*
 
+# Unwanted Folders
+test
+*.mf
+nbproject
+dist
+*mb
+
 # Files that might appear in the root of a volume
 .DocumentRevisions-V100
 .fseventsd
