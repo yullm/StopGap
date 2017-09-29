@@ -30,6 +30,7 @@ public class Stopgap extends Application {
     private static TextField hostDir;
     private static VBox directoryPane;
     private static ArrayList<DirBox> directories;
+    private static Thread[] watchers;
     
     @Override
     public void start(Stage primaryStage) {
@@ -131,7 +132,28 @@ public class Stopgap extends Application {
         left.getChildren().addAll(add,save,load);
         //Right Setup
         Button start = new Button("ACTIVATE");
-        right.getChildren().addAll(start);
+        Button stop = new Button("STOP");
+        start.managedProperty().bind(start.visibleProperty());
+        stop.managedProperty().bind(stop.visibleProperty());
+        stop.setVisible(false);
+        
+        start.setOnAction((e)->{
+            root.topProperty().get().setDisable(true);
+            root.centerProperty().get().setDisable(true);
+            left.setDisable(true);
+            start.setVisible(false);
+            stop.setVisible(true);
+            StartWatching();
+        });
+        stop.setOnAction((e)->{
+            root.topProperty().get().setDisable(false);
+            root.centerProperty().get().setDisable(false);
+            left.setDisable(false);
+            stop.setVisible(false);
+            start.setVisible(true);
+        });
+        
+        right.getChildren().addAll(start,stop);
     }
     
     private static void SaveConfiguration(Stage primaryStage){
@@ -211,6 +233,10 @@ public class Stopgap extends Application {
                 System.out.println("Error closing buffer :" + e);
             }
         }
+    }
+    
+    private static void StartWatching(){
+        //Start threads for watching each directory
     }
     
 }
