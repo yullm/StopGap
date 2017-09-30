@@ -3,6 +3,7 @@ package stopgap;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -11,6 +12,8 @@ import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -31,6 +34,7 @@ public class Stopgap extends Application {
     private static VBox directoryPane;
     private static ArrayList<DirBox> directories;
     private static Thread[] watchers;
+    private static File curPreset;
     
     @Override
     public void start(Stage primaryStage) {
@@ -41,15 +45,25 @@ public class Stopgap extends Application {
         chooser.setInitialDirectory(defaultDir);
         
         root = new BorderPane();
+        
         SetupTop(primaryStage);
         SetupCenter();
         SetupBottom(primaryStage);
+        
+        LoadSession(primaryStage);
         
         Scene scene = new Scene(root, 500, 300);
         
         primaryStage.setTitle("Meglofriend's Stopgap");
         primaryStage.setScene(scene);
         primaryStage.show();
+    }
+    
+    @Override
+    public void stop(){
+        //save last settings
+        SaveConfiguration(curPreset);
+        SaveSession();
     }
 
     public static void main(String[] args) {
@@ -112,6 +126,8 @@ public class Stopgap extends Application {
         save.setOnAction((event)->{SaveConfiguration(primaryStage);});
         Button load = new Button("Load");
         load.setOnAction((event)->{LoadConfiguration(primaryStage);});
+        Button clear = new Button("Clear");
+        clear.setOnAction((event)->{ClearInterface();});
         add.setOnAction((ActionEvent)->{
             DirBox db = new DirBox(directoryPane);
             directories.add(db);
@@ -129,7 +145,7 @@ public class Stopgap extends Application {
         });
         add.fire();
         
-        left.getChildren().addAll(add,save,load);
+        left.getChildren().addAll(add,save,load,clear);
         //Right Setup
         Button start = new Button("ACTIVATE");
         Button stop = new Button("STOP");
@@ -138,12 +154,14 @@ public class Stopgap extends Application {
         stop.setVisible(false);
         
         start.setOnAction((e)->{
-            root.topProperty().get().setDisable(true);
-            root.centerProperty().get().setDisable(true);
-            left.setDisable(true);
-            start.setVisible(false);
-            stop.setVisible(true);
-            StartWatching();
+            if(!hostDir.getText().equals("")){
+                root.topProperty().get().setDisable(true);
+                root.centerProperty().get().setDisable(true);
+                left.setDisable(true);
+                start.setVisible(false);
+                stop.setVisible(true);
+                StartWatching();
+            }
         });
         stop.setOnAction((e)->{
             root.topProperty().get().setDisable(false);
@@ -151,8 +169,7 @@ public class Stopgap extends Application {
             left.setDisable(false);
             stop.setVisible(false);
             start.setVisible(true);
-        });
-        
+        });  
         right.getChildren().addAll(start,stop);
     }
     
@@ -168,6 +185,7 @@ public class Stopgap extends Application {
             if(!file.exists()){
                 file.createNewFile();
             }
+            curPreset = file;
             fw = new FileWriter(file);
             
             bw = new BufferedWriter(fw);
@@ -176,7 +194,35 @@ public class Stopgap extends Application {
                 bw.write(d.folderDir.getText() + "|" + d.asDir.isSelected() + "\n");
             }
         }catch(Exception e){
-            e.printStackTrace();
+            System.out.println(e);
+        }
+        finally{
+            try{
+                if(bw != null) bw.close();
+                if(fw != null) fw.close(); 
+            }catch(IOException e){
+                System.out.println("Error closing buffer :" + e);
+            }
+        }
+    }
+    
+    private static void SaveConfiguration(File file){
+        BufferedWriter bw = null;
+        FileWriter fw = null;
+        try{
+            if(!file.exists()){
+                file.createNewFile();
+            }
+            curPreset = file;
+            fw = new FileWriter(file);
+            
+            bw = new BufferedWriter(fw);
+            bw.write(hostDir.getText() + "\n");
+            for(DirBox d : directories){
+                bw.write(d.folderDir.getText() + "|" + d.asDir.isSelected() + "\n");
+            }
+        }catch(Exception e){
+            System.out.println(e);
         }
         finally{
             try{
@@ -197,6 +243,7 @@ public class Stopgap extends Application {
             fc.setInitialFileName("StopGapConfig");
             fc.getExtensionFilters().add(new ExtensionFilter("Meglobot Configuration Files (*.mb)","*.mb"));
             File file = fc.showOpenDialog(primaryStage);
+            curPreset = file;
             fr = new FileReader(file);
             br = new BufferedReader(fr);
             
@@ -224,6 +271,7 @@ public class Stopgap extends Application {
                 directoryPane.getChildren().add(db);
             }
         }catch(Exception e){
+            System.out.println(e);
         }
         finally{
             try{
@@ -235,8 +283,134 @@ public class Stopgap extends Application {
         }
     }
     
+    private static void LoadConfiguration(Stage primaryStage,String path){
+        BufferedReader br = null;
+        FileReader fr = null;
+        try{
+            FileChooser fc = new FileChooser();
+            fc.setInitialDirectory(new File("."));
+            fc.setInitialFileName("StopGapConfig");
+            fc.getExtensionFilters().add(new ExtensionFilter("Meglobot Configuration Files (*.mb)","*.mb"));
+            File file = new File(path);
+            curPreset = file;
+            fr = new FileReader(file);
+            br = new BufferedReader(fr);
+            
+            directories.clear();
+            directoryPane.getChildren().clear();
+            
+            hostDir.setText(br.readLine());
+            String line;
+            while((line = br.readLine()) != null){
+                String[] parts = line.split("\\|");
+                DirBox db = new DirBox(directoryPane);
+                db.asDir.setSelected(Boolean.parseBoolean(parts[1]));
+                db.folderDir.setText(parts[0]);
+                directories.add(db);
+                db.search.setOnAction((event)->{
+                    chooser.setTitle("Select Child Directory");
+                    try{
+                        db.folderDir.setText(chooser.showDialog(primaryStage).getPath());
+                    }catch(NullPointerException e){}//Cancelled search
+                });
+                db.delete.setOnAction((event)->{
+                    directoryPane.getChildren().remove(db);
+                    directories.remove(db);
+                });
+                directoryPane.getChildren().add(db);
+            }
+        }catch(Exception e){
+            System.out.println(e);
+        }
+        finally{
+            try{
+                if(br != null) br.close();
+                if(fr != null) fr.close(); 
+            }catch(IOException e){
+                System.out.println("Error closing buffer :" + e);
+            }
+        }
+    }
+    
+    private static void SaveSession(){
+        BufferedWriter bw = null;
+        FileWriter fw = null;
+        try{
+            if(curPreset != null){
+                File config = new File("lastSession.mb");
+                if(!config.exists())
+                    config.createNewFile();
+                fw = new FileWriter(config);
+                bw = new BufferedWriter(fw);
+                bw.write(curPreset.getPath());
+            }
+        }catch(Exception e){
+            System.out.println(e);
+        }
+        finally{
+            try{
+                if(bw != null) bw.close();
+                if(fw != null) fw.close(); 
+            }catch(IOException e){
+                System.out.println("Error closing buffer :" + e);
+            }
+        }
+    }
+
+    private static boolean LoadSession(Stage stage){
+        BufferedReader br = null;
+        FileReader fr = null;
+        try{
+            File file = new File("lastSession.mb");
+            if(!file.exists()) return false;
+            fr = new FileReader(file);
+            br = new BufferedReader(fr);
+            LoadConfiguration(stage,br.readLine());
+            return true;
+        }catch(Exception e){
+            System.out.println(e);
+        }
+        finally{
+            try{
+                if(br != null) br.close();
+                if(fr != null) fr.close(); 
+            }catch(IOException e){
+                System.out.println("Error closing buffer :" + e);
+            }
+        }
+        return false;
+    }
+    
+    private static void ClearInterface(){
+        curPreset = null;
+        hostDir.setText("");
+        directories.clear();
+        directoryPane.getChildren().clear();
+    }
+    
     private static void StartWatching(){
         //Start threads for watching each directory
+        //Check all directories for validity
+        //Each thread should start a collection for each file and check if the file exists already
+        //Then create a collection of each file thats been copied.
+        //Each iteration check if any of the files are missing or have been modified!
+        try{
+            File host = new File(hostDir.getText());
+            if(!host.exists())
+                throw new FileNotFoundException(hostDir.getText());
+            for(DirBox dir : directories){
+                File checkPath = new File(dir.folderDir.getText());
+                if(!checkPath.exists())
+                    throw new FileNotFoundException(checkPath.getPath());
+            }
+        }catch(FileNotFoundException e){
+            System.out.println(e);
+            Alert alert = new Alert(AlertType.INFORMATION);
+            alert.setTitle("Missing Directory");
+            alert.setHeaderText(null);
+            alert.setContentText("Folder: '" + e.getMessage() + "' not found");
+            alert.showAndWait();
+        }
     }
     
 }
