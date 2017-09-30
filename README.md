@@ -1,7 +1,9 @@
 # Meglofriend's Stop Gap
 
 ### Work in Progress
-Current stage : UI
+Current stage : File Watching
+
+### Update: Application now copies files properly and removes then when finished. Next step, watch files for updates.
 
 ## Overview
 

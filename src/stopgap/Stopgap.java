@@ -7,7 +7,16 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import static java.nio.file.FileVisitResult.CONTINUE;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Collections;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -25,6 +34,8 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
+import org.apache.commons.io.FileUtils;
+
 
 public class Stopgap extends Application {
     
@@ -33,11 +44,12 @@ public class Stopgap extends Application {
     private static TextField hostDir;
     private static VBox directoryPane;
     private static ArrayList<DirBox> directories;
-    private static Thread[] watchers;
     private static File curPreset;
+    private static ArrayList<File> copiedFiles;
     
     @Override
     public void start(Stage primaryStage) {
+        copiedFiles = new ArrayList();
         directories = new ArrayList();
         chooser = new DirectoryChooser();
         chooser.setTitle("File Chooser");
@@ -54,7 +66,7 @@ public class Stopgap extends Application {
         
         Scene scene = new Scene(root, 500, 300);
         
-        primaryStage.setTitle("Meglofriend's Stopgap");
+        primaryStage.setTitle("Meglofriend's Stop Gap");
         primaryStage.setScene(scene);
         primaryStage.show();
     }
@@ -169,6 +181,21 @@ public class Stopgap extends Application {
             left.setDisable(false);
             stop.setVisible(false);
             start.setVisible(true);
+            if(!copiedFiles.isEmpty()){
+                Collections.reverse(copiedFiles);
+                try{
+                    for(File f : copiedFiles){
+                        if(f.exists()){
+                            FileUtils.deleteQuietly(f);
+                            File parent = new File(f.getParent());
+                            if(parent.list().length == 0 && !parent.getPath().equals(hostDir.getText()))
+                                FileUtils.deleteDirectory(parent);
+                        }
+                    }
+                }catch(IOException ex){
+                    System.out.println(ex);
+                }
+            }
         });  
         right.getChildren().addAll(start,stop);
     }
@@ -402,8 +429,28 @@ public class Stopgap extends Application {
                 File checkPath = new File(dir.folderDir.getText());
                 if(!checkPath.exists())
                     throw new FileNotFoundException(checkPath.getPath());
+                Files.walkFileTree(Paths.get(checkPath.getPath()), new SimpleFileVisitor<Path>(){
+                    @Override
+                    public FileVisitResult visitFile(Path path, BasicFileAttributes attrs){
+                        try{
+                            File currentFile = new File(path.toString());
+                            String[] pathParts = checkPath.getPath().split("\\\\");
+                            String ext = "";
+                            if(dir.asDir.isSelected())
+                                 ext = "\\" + pathParts[pathParts.length-1];
+                            ext += path.toString().replace(checkPath.getPath(), "");
+                            System.out.println(ext);
+                            File newFile = new File(hostDir.getText()+ext);
+                            FileUtils.copyFile(currentFile, newFile);
+                            copiedFiles.add(newFile);
+                        }catch(IOException e){
+                            System.out.println(e);
+                        }
+                        return CONTINUE;
+                    }
+                });
             }
-        }catch(FileNotFoundException e){
+        }catch(IOException e){
             System.out.println(e);
             Alert alert = new Alert(AlertType.INFORMATION);
             alert.setTitle("Missing Directory");

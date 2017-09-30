@@ -37,6 +37,7 @@ test
 nbproject
 dist
 *mb
+commons-io-2.5
 
 # Files that might appear in the root of a volume
 .DocumentRevisions-V100
