@@ -13,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,7 +44,7 @@ public class Stopgap extends Application {
     private static VBox directoryPane;
     private static ArrayList<DirBox> directories;
     private static File curPreset;
-    private static ArrayList<File> copiedFiles;
+    private static ArrayList<FilePair> copiedFiles;
     
     @Override
     public void start(Stage primaryStage) {
@@ -184,14 +183,15 @@ public class Stopgap extends Application {
             if(!copiedFiles.isEmpty()){
                 Collections.reverse(copiedFiles);
                 try{
-                    for(File f : copiedFiles){
-                        if(f.exists()){
-                            FileUtils.deleteQuietly(f);
-                            File parent = new File(f.getParent());
+                    for(FilePair pair : copiedFiles){
+                        if(pair.copy.exists()){
+                            File parent = new File(pair.copy.getParent());
+                            FileUtils.deleteQuietly(pair.copy);
                             if(parent.list().length == 0 && !parent.getPath().equals(hostDir.getText()))
                                 FileUtils.deleteDirectory(parent);
                         }
                     }
+                    copiedFiles.clear();
                 }catch(IOException ex){
                     System.out.println(ex);
                 }
@@ -442,7 +442,7 @@ public class Stopgap extends Application {
                             System.out.println(ext);
                             File newFile = new File(hostDir.getText()+ext);
                             FileUtils.copyFile(currentFile, newFile);
-                            copiedFiles.add(newFile);
+                            copiedFiles.add(new FilePair(currentFile,newFile));
                         }catch(IOException e){
                             System.out.println(e);
                         }
