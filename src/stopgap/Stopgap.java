@@ -13,10 +13,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import javafx.application.Application;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -45,9 +51,11 @@ public class Stopgap extends Application {
     private static ArrayList<DirBox> directories;
     private static File curPreset;
     private static ArrayList<FilePair> copiedFiles;
+    private static ArrayList<WatchService> watchers;
     
     @Override
     public void start(Stage primaryStage) {
+        watchers = new ArrayList();
         copiedFiles = new ArrayList();
         directories = new ArrayList();
         chooser = new DirectoryChooser();
@@ -183,6 +191,9 @@ public class Stopgap extends Application {
             if(!copiedFiles.isEmpty()){
                 Collections.reverse(copiedFiles);
                 try{
+                    for(WatchService w : watchers){
+                        w.close();
+                    }
                     for(FilePair pair : copiedFiles){
                         if(pair.copy.exists()){
                             File parent = new File(pair.copy.getParent());
@@ -191,10 +202,10 @@ public class Stopgap extends Application {
                                 FileUtils.deleteDirectory(parent);
                         }
                     }
-                    copiedFiles.clear();
                 }catch(IOException ex){
                     System.out.println(ex);
                 }
+                copiedFiles.clear();
             }
         });  
         right.getChildren().addAll(start,stop);
@@ -426,29 +437,73 @@ public class Stopgap extends Application {
             if(!host.exists())
                 throw new FileNotFoundException(hostDir.getText());
             for(DirBox dir : directories){
-                File checkPath = new File(dir.folderDir.getText());
-                if(!checkPath.exists())
-                    throw new FileNotFoundException(checkPath.getPath());
-                Files.walkFileTree(Paths.get(checkPath.getPath()), new SimpleFileVisitor<Path>(){
+                File dirFile = new File(dir.folderDir.getText());
+                Path dirPath = Paths.get(dirFile.getPath());
+                if(!dirFile.exists())
+                    throw new FileNotFoundException(dirFile.getPath());
+                WatchService watcher = dirPath.getFileSystem().newWatchService();
+                watchers.add(watcher);
+                Files.walkFileTree(dirPath, new SimpleFileVisitor<Path>(){
+                    
                     @Override
-                    public FileVisitResult visitFile(Path path, BasicFileAttributes attrs){
-                        try{
+                    public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs) throws IOException{
+                        path.register(watcher, StandardWatchEventKinds.ENTRY_CREATE,
+                                StandardWatchEventKinds.ENTRY_MODIFY,
+                                StandardWatchEventKinds.ENTRY_DELETE);
+                        return CONTINUE;
+                    }
+                    
+                    @Override
+                    public FileVisitResult visitFile(Path path, BasicFileAttributes attrs)throws IOException{
                             File currentFile = new File(path.toString());
-                            String[] pathParts = checkPath.getPath().split("\\\\");
+                            String[] pathParts = dirFile.getPath().split("\\\\");
                             String ext = "";
                             if(dir.asDir.isSelected())
                                  ext = "\\" + pathParts[pathParts.length-1];
-                            ext += path.toString().replace(checkPath.getPath(), "");
+                            ext += path.toString().replace(dirFile.getPath(), "");
                             System.out.println(ext);
                             File newFile = new File(hostDir.getText()+ext);
                             FileUtils.copyFile(currentFile, newFile);
                             copiedFiles.add(new FilePair(currentFile,newFile));
-                        }catch(IOException e){
-                            System.out.println(e);
-                        }
                         return CONTINUE;
                     }
                 });
+                //start watch task for dir
+                Task task = new Task<Void>(){
+                    @Override
+                    public Void call(){
+                        try{
+                            WatchKey watchKey = watcher.take();
+                            while(watchKey != null){
+                                List<WatchEvent<?>> events = watchKey.pollEvents();
+                                for(WatchEvent e : events){
+                                    File editFile = new File(dirPath.toString() + "\\" + e.context());
+                                    if(editFile.exists()){
+                                        if(e.kind()  == StandardWatchEventKinds.ENTRY_CREATE){
+                                            //If new file is added
+                                            System.out.println("Created: " + editFile.getPath());
+                                        }
+                                        if(e.kind()  == StandardWatchEventKinds.ENTRY_MODIFY){
+                                            //if a file has changed
+                                            System.out.println("Modified: " + editFile.getPath());
+                                        }
+                                        if(e.kind()  == StandardWatchEventKinds.ENTRY_DELETE){
+                                            //if a file has been removed
+                                            System.out.println("Deleted: " + editFile.getPath());
+                                        }
+                                    }
+                                }
+                            }
+                        }catch(InterruptedException e){
+                            System.out.println(e);
+                        }
+                        return null;
+                    }
+                };
+                Thread watchThread = new Thread(task);
+                watchThread.setDaemon(true);
+                watchThread.start();
+                
             }
         }catch(IOException e){
             System.out.println(e);
