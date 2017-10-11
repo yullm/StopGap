@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import static java.nio.file.FileVisitResult.CONTINUE;
 import java.nio.file.Files;
@@ -20,7 +21,9 @@ import java.nio.file.WatchService;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javafx.application.Application;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -51,11 +54,12 @@ public class Stopgap extends Application {
     private static ArrayList<DirBox> directories;
     private static File curPreset;
     private static ArrayList<FilePair> copiedFiles;
-    private static ArrayList<WatchService> watchers;
+    private static WatchService watcher;
+    private static Map<WatchKey, Path> keys;
     
     @Override
     public void start(Stage primaryStage) {
-        watchers = new ArrayList();
+        keys = new HashMap<>();
         copiedFiles = new ArrayList();
         directories = new ArrayList();
         chooser = new DirectoryChooser();
@@ -191,9 +195,7 @@ public class Stopgap extends Application {
             if(!copiedFiles.isEmpty()){
                 Collections.reverse(copiedFiles);
                 try{
-                    for(WatchService w : watchers){
-                        w.close();
-                    }
+                    if(watcher != null)watcher.close();
                     for(FilePair pair : copiedFiles){
                         if(pair.copy.exists()){
                             File parent = new File(pair.copy.getParent());
@@ -433,6 +435,7 @@ public class Stopgap extends Application {
         //Then create a collection of each file thats been copied.
         //Each iteration check if any of the files are missing or have been modified!
         try{
+            watcher = FileSystems.getDefault().newWatchService();
             File host = new File(hostDir.getText());
             if(!host.exists())
                 throw new FileNotFoundException(hostDir.getText());
@@ -441,8 +444,6 @@ public class Stopgap extends Application {
                 Path dirPath = Paths.get(dirFile.getPath());
                 if(!dirFile.exists())
                     throw new FileNotFoundException(dirFile.getPath());
-                WatchService watcher = dirPath.getFileSystem().newWatchService();
-                watchers.add(watcher);
                 Files.walkFileTree(dirPath, new SimpleFileVisitor<Path>(){
                     
                     @Override
@@ -461,41 +462,81 @@ public class Stopgap extends Application {
                             if(dir.asDir.isSelected())
                                  ext = "\\" + pathParts[pathParts.length-1];
                             ext += path.toString().replace(dirFile.getPath(), "");
-                            System.out.println(ext);
+                            //System.out.println(ext);
                             File newFile = new File(hostDir.getText()+ext);
                             FileUtils.copyFile(currentFile, newFile);
                             copiedFiles.add(new FilePair(currentFile,newFile));
                         return CONTINUE;
                     }
-                });
-                //start watch task for dir
+                });             
+            }
+            
+            //start watch task for dir
                 Task task = new Task<Void>(){
                     @Override
                     public Void call(){
                         try{
-                            WatchKey watchKey = watcher.take();
-                            while(watchKey != null){
-                                List<WatchEvent<?>> events = watchKey.pollEvents();
-                                for(WatchEvent e : events){
-                                    File editFile = new File(dirPath.toString() + "\\" + e.context());
+                            WatchKey watchKey;
+                            while((watchKey = watcher.take()) != null){
+                                for(WatchEvent e : watchKey.pollEvents()){
+                                    File editFile = new File((Path)watchKey.watchable() + "\\" + e.context());                               
+                                    System.out.println("Edit file is: " + editFile.getPath());
+                                    System.out.println("Event Kind: " + e.kind().toString());
+                                    System.out.println("editFile exists??? " + editFile.exists());
                                     if(editFile.exists()){
-                                        if(e.kind()  == StandardWatchEventKinds.ENTRY_CREATE){
+                                        if(e.kind() == StandardWatchEventKinds.ENTRY_CREATE){
+//                                            System.out.println("Created: " + editFile.getPath());
                                             //If new file is added
-                                            System.out.println("Created: " + editFile.getPath());
+//                                            String[] pathParts = dirFile.getPath().split("\\\\");
+//                                            String ext = "";
+//                                            if(dir.asDir.isSelected())
+//                                                 ext = "\\" + pathParts[pathParts.length-1];
+//                                            ext += editFile.getPath().replace(dirFile.getPath(), "");
+//                                            File newFile = new File(hostDir.getText()+ext);
+//                                            if(!editFile.isDirectory()){
+//                                                    FileUtils.copyFile(editFile, newFile);
+//                                            }else{
+//                                                FileUtils.copyDirectory(editFile, newFile);
+//                                                Paths.get(editFile.getPath()).register(watcher, 
+//                                                        StandardWatchEventKinds.ENTRY_CREATE,
+//                                                        StandardWatchEventKinds.ENTRY_MODIFY,
+//                                                        StandardWatchEventKinds.ENTRY_DELETE);
+////                                                Files.walkFileTree(Paths.get(editFile.getPath()), new SimpleFileVisitor<Path>(){
+////                                                    @Override
+////                                                    public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs) throws IOException{
+////                                                        path.register(watcher, StandardWatchEventKinds.ENTRY_CREATE,
+////                                                                StandardWatchEventKinds.ENTRY_MODIFY,
+////                                                                StandardWatchEventKinds.ENTRY_DELETE);
+////                                                        return CONTINUE;
+////                                                    }
+////                                                });
+                                            //}
+                                            //copiedFiles.add(new FilePair(editFile,newFile));
                                         }
-                                        if(e.kind()  == StandardWatchEventKinds.ENTRY_MODIFY){
-                                            //if a file has changed
-                                            System.out.println("Modified: " + editFile.getPath());
+                                        if(e.kind() == StandardWatchEventKinds.ENTRY_MODIFY){
+//                                            if a file has changed
+                                            for(FilePair p : copiedFiles){
+                                                if(p.original.equals(editFile)){
+                                                    if(!editFile.isDirectory()){
+                                                        System.out.println("Modified: " + editFile.getPath());
+                                                        if(editFile != editFile)
+                                                            FileUtils.copyFile(p.original, p.copy);
+                                                    }
+                                                }
+                                            }
                                         }
-                                        if(e.kind()  == StandardWatchEventKinds.ENTRY_DELETE){
+                                        if(e.kind() == StandardWatchEventKinds.ENTRY_DELETE){
                                             //if a file has been removed
-                                            System.out.println("Deleted: " + editFile.getPath());
+                                            System.out.println("Deleted: " + editFile.getPath());    
                                         }
                                     }
                                 }
+                                watchKey.reset();
                             }
-                        }catch(InterruptedException e){
-                            System.out.println(e);
+                        }catch(Exception e){
+                        //}catch(InterruptedException | IOException e){
+                            e.printStackTrace();
+                            //System.out.println(e);
                         }
                         return null;
                     }
@@ -503,8 +544,7 @@ public class Stopgap extends Application {
                 Thread watchThread = new Thread(task);
                 watchThread.setDaemon(true);
                 watchThread.start();
-                
-            }
+            
         }catch(IOException e){
             System.out.println(e);
             Alert alert = new Alert(AlertType.INFORMATION);
