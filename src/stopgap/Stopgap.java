@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.ClosedWatchServiceException;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import static java.nio.file.FileVisitResult.CONTINUE;
@@ -22,7 +23,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import javafx.application.Application;
 import javafx.concurrent.Task;
@@ -55,11 +55,10 @@ public class Stopgap extends Application {
     private static File curPreset;
     private static ArrayList<FilePair> copiedFiles;
     private static WatchService watcher;
-    private static Map<WatchKey, Path> keys;
+
     
     @Override
     public void start(Stage primaryStage) {
-        keys = new HashMap<>();
         copiedFiles = new ArrayList();
         directories = new ArrayList();
         chooser = new DirectoryChooser();
@@ -195,7 +194,7 @@ public class Stopgap extends Application {
             if(!copiedFiles.isEmpty()){
                 Collections.reverse(copiedFiles);
                 try{
-                    if(watcher != null)watcher.close();
+                    if(watcher != null) watcher.close();
                     for(FilePair pair : copiedFiles){
                         if(pair.copy.exists()){
                             File parent = new File(pair.copy.getParent());
@@ -462,13 +461,12 @@ public class Stopgap extends Application {
                             if(dir.asDir.isSelected())
                                  ext = "\\" + pathParts[pathParts.length-1];
                             ext += path.toString().replace(dirFile.getPath(), "");
-                            //System.out.println(ext);
                             File newFile = new File(hostDir.getText()+ext);
                             FileUtils.copyFile(currentFile, newFile);
                             copiedFiles.add(new FilePair(currentFile,newFile));
                         return CONTINUE;
                     }
-                });             
+                });  
             }
             
             //start watch task for dir
@@ -479,39 +477,50 @@ public class Stopgap extends Application {
                             WatchKey watchKey;
                             while((watchKey = watcher.take()) != null){
                                 for(WatchEvent e : watchKey.pollEvents()){
-                                    File editFile = new File((Path)watchKey.watchable() + "\\" + e.context());                               
-                                    System.out.println("Edit file is: " + editFile.getPath());
-                                    System.out.println("Event Kind: " + e.kind().toString());
-                                    System.out.println("editFile exists??? " + editFile.exists());
+                                    Path eventDir = (Path)watchKey.watchable();
+                                    File editFile = new File(eventDir + "\\" + e.context());                               
                                     if(editFile.exists()){
                                         if(e.kind() == StandardWatchEventKinds.ENTRY_CREATE){
-//                                            System.out.println("Created: " + editFile.getPath());
-                                            //If new file is added
-//                                            String[] pathParts = dirFile.getPath().split("\\\\");
-//                                            String ext = "";
-//                                            if(dir.asDir.isSelected())
-//                                                 ext = "\\" + pathParts[pathParts.length-1];
-//                                            ext += editFile.getPath().replace(dirFile.getPath(), "");
-//                                            File newFile = new File(hostDir.getText()+ext);
-//                                            if(!editFile.isDirectory()){
-//                                                    FileUtils.copyFile(editFile, newFile);
-//                                            }else{
-//                                                FileUtils.copyDirectory(editFile, newFile);
-//                                                Paths.get(editFile.getPath()).register(watcher, 
-//                                                        StandardWatchEventKinds.ENTRY_CREATE,
-//                                                        StandardWatchEventKinds.ENTRY_MODIFY,
-//                                                        StandardWatchEventKinds.ENTRY_DELETE);
-////                                                Files.walkFileTree(Paths.get(editFile.getPath()), new SimpleFileVisitor<Path>(){
-////                                                    @Override
-////                                                    public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs) throws IOException{
-////                                                        path.register(watcher, StandardWatchEventKinds.ENTRY_CREATE,
-////                                                                StandardWatchEventKinds.ENTRY_MODIFY,
-////                                                                StandardWatchEventKinds.ENTRY_DELETE);
-////                                                        return CONTINUE;
-////                                                    }
-////                                                });
-                                            //}
-                                            //copiedFiles.add(new FilePair(editFile,newFile));
+                                            
+                                            String base = "";
+                                            String ext = "";
+                                            String[] dirParts = eventDir.toString().split("\\\\");
+                                            String checkString = dirParts[0];
+                                            outerloop:
+                                            for(int i = 1; i <= dirParts.length; i++){
+                                                System.out.println("Check String: " + checkString);
+                                                for(DirBox d : directories){
+                                                    if(d.folderDir.getText().equals(checkString)){ 
+                                                        base = d.folderDir.getText();
+                                                        if(d.asDir.isSelected()){
+                                                            String[] baseParts = base.split("\\\\");
+                                                            ext += "\\" +  baseParts[baseParts.length-1];
+                                                        }
+                                                        break outerloop;
+                                                    }
+                                                }
+                                                checkString += "\\" + dirParts[i];
+                                            }
+                                            ext += editFile.getPath().replace(base, "");
+                                            System.out.println("new Path: " + hostDir.getText()+ext);
+
+                                            File newFile = new File(hostDir.getText()+ext);
+                                            if(!editFile.isDirectory()){
+                                                   // FileUtils.copyFile(editFile, newFile);
+                                            }else{
+                                                FileUtils.copyDirectory(editFile, newFile);
+                                                Files.walkFileTree(Paths.get(editFile.getPath()), new SimpleFileVisitor<Path>(){
+                                                    @Override
+                                                    public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs) throws IOException{
+                                                        path.register(watcher, StandardWatchEventKinds.ENTRY_CREATE,
+                                                                StandardWatchEventKinds.ENTRY_MODIFY,
+                                                                StandardWatchEventKinds.ENTRY_DELETE);
+                                                        return CONTINUE;
+                                                    }
+                                                });
+                                            }
+                                            copiedFiles.add(new FilePair(editFile,newFile));
+                                            System.out.println();
                                         }
                                         if(e.kind() == StandardWatchEventKinds.ENTRY_MODIFY){
 //                                            if a file has changed
@@ -533,10 +542,11 @@ public class Stopgap extends Application {
                                 }
                                 watchKey.reset();
                             }
-                        }catch(Exception e){
-                        //}catch(InterruptedException | IOException e){
+                        }catch(InterruptedException | IOException e){
                             e.printStackTrace();
-                            //System.out.println(e);
+                        }
+                        catch(ClosedWatchServiceException e){
+                            System.out.println("Watcher Closed");
                         }
                         return null;
                     }
@@ -544,7 +554,7 @@ public class Stopgap extends Application {
                 Thread watchThread = new Thread(task);
                 watchThread.setDaemon(true);
                 watchThread.start();
-            
+
         }catch(IOException e){
             System.out.println(e);
             Alert alert = new Alert(AlertType.INFORMATION);
