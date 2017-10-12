@@ -71,9 +71,7 @@ public class Stopgap extends Application {
         SetupTop(primaryStage);
         SetupCenter();
         SetupBottom(primaryStage);
-        
         LoadSession(primaryStage);
-        
         Scene scene = new Scene(root, 500, 300);
         
         primaryStage.setTitle("Meglofriend's Stop Gap");
@@ -443,6 +441,10 @@ public class Stopgap extends Application {
                 Path dirPath = Paths.get(dirFile.getPath());
                 if(!dirFile.exists())
                     throw new FileNotFoundException(dirFile.getPath());
+                String[] dirParts = dirFile.getPath().split("\\\\");
+                if(dir.asDir.isSelected()){
+                    copiedFiles.add(new FilePair(dirFile,new File(hostDir.getText() + "\\" + dirParts[dirParts.length-1])));
+                }
                 Files.walkFileTree(dirPath, new SimpleFileVisitor<Path>(){
                     
                     @Override
@@ -466,7 +468,8 @@ public class Stopgap extends Application {
                             copiedFiles.add(new FilePair(currentFile,newFile));
                         return CONTINUE;
                     }
-                });  
+                });
+                
             }
             
             //start watch task for dir
