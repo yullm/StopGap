@@ -506,7 +506,7 @@ public class Stopgap extends Application {
 
                                             File newFile = new File(hostDir.getText()+ext);
                                             if(!editFile.isDirectory()){
-                                                   // FileUtils.copyFile(editFile, newFile);
+                                                    FileUtils.copyFile(editFile, newFile);
                                             }else{
                                                 FileUtils.copyDirectory(editFile, newFile);
                                                 Files.walkFileTree(Paths.get(editFile.getPath()), new SimpleFileVisitor<Path>(){
@@ -528,15 +528,21 @@ public class Stopgap extends Application {
                                                 if(p.original.equals(editFile)){
                                                     if(!editFile.isDirectory()){
                                                         System.out.println("Modified: " + editFile.getPath());
-                                                        if(editFile != editFile)
-                                                            FileUtils.copyFile(p.original, p.copy);
+                                                        FileUtils.copyFile(p.original, p.copy);
                                                     }
                                                 }
                                             }
                                         }
+                                    }else{
                                         if(e.kind() == StandardWatchEventKinds.ENTRY_DELETE){
                                             //if a file has been removed
                                             System.out.println("Deleted: " + editFile.getPath());    
+                                            for(FilePair p : copiedFiles){
+                                                if(p.original.equals(editFile)){
+                                                    if(!editFile.isDirectory()) FileUtils.deleteQuietly(p.copy);
+                                                    else FileUtils.deleteDirectory(p.copy);
+                                                }
+                                            }
                                         }
                                     }
                                 }
