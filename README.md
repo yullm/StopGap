@@ -1,7 +1,7 @@
 # Meglofriend's Stop Gap
 
 ## Stop Gap
-[![foo](www.meglobot.com/blogimages/stopgapbanner1.png =100%x*)](https://github.com/yullm/StopGap)
+![banner](www.meglobot.com/blogimages/stopgapbanner1.png)
 
 ## Description:
 
