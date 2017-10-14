@@ -22,8 +22,6 @@ import java.nio.file.WatchService;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import javafx.application.Application;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -35,6 +33,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -59,6 +58,7 @@ public class Stopgap extends Application {
     
     @Override
     public void start(Stage primaryStage) {
+        //Initialise members
         copiedFiles = new ArrayList();
         directories = new ArrayList();
         chooser = new DirectoryChooser();
@@ -67,21 +67,26 @@ public class Stopgap extends Application {
         chooser.setInitialDirectory(defaultDir);
         
         root = new BorderPane();
-        
+        //Call Pane Setup Functions
         SetupTop(primaryStage);
         SetupCenter();
         SetupBottom(primaryStage);
+        // Load last session
         LoadSession(primaryStage);
         Scene scene = new Scene(root, 500, 300);
         
-        primaryStage.setTitle("Meglofriend's Stop Gap");
+        // Load application icon.
+        primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("ico.png")));
+        
+        primaryStage.setTitle("Meglofriend's Stop Gap V.1.1");
         primaryStage.setScene(scene);
         primaryStage.show();
     }
     
     @Override
     public void stop(){
-        //save last settings
+        //save last settings and clear copies
+        clearWatcher();
         SaveConfiguration(curPreset);
         SaveSession();
     }
@@ -91,6 +96,7 @@ public class Stopgap extends Application {
     }
     
     private static void SetupTop(Stage primaryStage){
+        // create the host selection bar
         HBox hostBox = new HBox();
         hostBox.setPadding(new Insets(10));
         hostBox.setSpacing(8);
@@ -117,6 +123,7 @@ public class Stopgap extends Application {
     }
     
     private static void SetupCenter(){
+        // Center holds the child directory selectors in a scrollable pane
         ScrollPane sp = new ScrollPane();
         sp.isFitToWidth();
         directoryPane = new VBox();
@@ -189,7 +196,14 @@ public class Stopgap extends Application {
             left.setDisable(false);
             stop.setVisible(false);
             start.setVisible(true);
-            if(!copiedFiles.isEmpty()){
+            clearWatcher();
+        });  
+        right.getChildren().addAll(start,stop);
+    }
+    
+    private static void clearWatcher(){
+        //Removes all copied files and clears the list.
+        if(!copiedFiles.isEmpty()){
                 Collections.reverse(copiedFiles);
                 try{
                     if(watcher != null) watcher.close();
@@ -206,11 +220,11 @@ public class Stopgap extends Application {
                 }
                 copiedFiles.clear();
             }
-        });  
-        right.getChildren().addAll(start,stop);
+        
     }
     
     private static void SaveConfiguration(Stage primaryStage){
+        // method for saving the current configuration
         BufferedWriter bw = null;
         FileWriter fw = null;
         try{
@@ -226,7 +240,9 @@ public class Stopgap extends Application {
             fw = new FileWriter(file);
             
             bw = new BufferedWriter(fw);
+            //write host string
             bw.write(hostDir.getText() + "\n");
+            //write a line for each child directory and include the asDirectory varaible.
             for(DirBox d : directories){
                 bw.write(d.folderDir.getText() + "|" + d.asDir.isSelected() + "\n");
             }
@@ -244,6 +260,7 @@ public class Stopgap extends Application {
     }
     
     private static void SaveConfiguration(File file){
+        //overload method for file argument
         BufferedWriter bw = null;
         FileWriter fw = null;
         try{
@@ -272,6 +289,7 @@ public class Stopgap extends Application {
     }
     
     private static void LoadConfiguration(Stage primaryStage){
+        //method for load a configuration from a file.
         BufferedReader br = null;
         FileReader fr = null;
         try{
@@ -321,6 +339,7 @@ public class Stopgap extends Application {
     }
     
     private static void LoadConfiguration(Stage primaryStage,String path){
+        //overload method to load file from a path instead of choosing one.
         BufferedReader br = null;
         FileReader fr = null;
         try{
@@ -370,6 +389,7 @@ public class Stopgap extends Application {
     }
     
     private static void SaveSession(){
+        // Saves the name of the file of the current configuration for the next session.
         BufferedWriter bw = null;
         FileWriter fw = null;
         try{
@@ -395,6 +415,7 @@ public class Stopgap extends Application {
     }
 
     private static boolean LoadSession(Stage stage){
+        // checks for last configuration and loads it.
         BufferedReader br = null;
         FileReader fr = null;
         try{
@@ -419,6 +440,7 @@ public class Stopgap extends Application {
     }
     
     private static void ClearInterface(){
+        //clears all settings for a fresh start.
         curPreset = null;
         hostDir.setText("");
         directories.clear();
@@ -426,27 +448,31 @@ public class Stopgap extends Application {
     }
     
     private static void StartWatching(){
-        //Start threads for watching each directory
-        //Check all directories for validity
-        //Each thread should start a collection for each file and check if the file exists already
-        //Then create a collection of each file thats been copied.
-        //Each iteration check if any of the files are missing or have been modified!
+        //Checks all directories for validity
+        //Then create sa collection of each file for copying.
+        //Starts a thread to maintaining file consistency.
         try{
             watcher = FileSystems.getDefault().newWatchService();
             File host = new File(hostDir.getText());
+            
             if(!host.exists())
                 throw new FileNotFoundException(hostDir.getText());
+            
             for(DirBox dir : directories){
+                //get directory information.
                 File dirFile = new File(dir.folderDir.getText());
                 Path dirPath = Paths.get(dirFile.getPath());
                 if(!dirFile.exists())
                     throw new FileNotFoundException(dirFile.getPath());
                 String[] dirParts = dirFile.getPath().split("\\\\");
+                //if adding directory as folder and not its contents to the root create a entry to list for the folder.
                 if(dir.asDir.isSelected()){
                     copiedFiles.add(new FilePair(dirFile,new File(hostDir.getText() + "\\" + dirParts[dirParts.length-1])));
                 }
+                
+                // walk the folder hierarchy for watcher registry and file copying                
                 Files.walkFileTree(dirPath, new SimpleFileVisitor<Path>(){
-                    
+                    //Start by registering each directory to the watcher.
                     @Override
                     public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs) throws IOException{
                         path.register(watcher, StandardWatchEventKinds.ENTRY_CREATE,
@@ -455,15 +481,18 @@ public class Stopgap extends Application {
                         return CONTINUE;
                     }
                     
+                    // When a file is visited the copy it over to the desired location.
                     @Override
                     public FileVisitResult visitFile(Path path, BasicFileAttributes attrs)throws IOException{
                             File currentFile = new File(path.toString());
                             String[] pathParts = dirFile.getPath().split("\\\\");
                             String ext = "";
+                            //get folder name if base directory is folder and not root.
                             if(dir.asDir.isSelected())
                                  ext = "\\" + pathParts[pathParts.length-1];
                             ext += path.toString().replace(dirFile.getPath(), "");
                             File newFile = new File(hostDir.getText()+ext);
+                            //copy files and add entry to list
                             FileUtils.copyFile(currentFile, newFile);
                             copiedFiles.add(new FilePair(currentFile,newFile));
                         return CONTINUE;
@@ -473,99 +502,104 @@ public class Stopgap extends Application {
             }
             
             //start watch task for dir
-                Task task = new Task<Void>(){
-                    @Override
-                    public Void call(){
-                        try{
-                            WatchKey watchKey;
-                            while((watchKey = watcher.take()) != null){
-                                for(WatchEvent e : watchKey.pollEvents()){
-                                    Path eventDir = (Path)watchKey.watchable();
-                                    File editFile = new File(eventDir + "\\" + e.context());                               
-                                    if(editFile.exists()){
-                                        if(e.kind() == StandardWatchEventKinds.ENTRY_CREATE){
-                                            
-                                            String base = "";
-                                            String ext = "";
-                                            String[] dirParts = eventDir.toString().split("\\\\");
-                                            String checkString = dirParts[0];
-                                            outerloop:
-                                            for(int i = 1; i <= dirParts.length; i++){
-                                                System.out.println("Check String: " + checkString);
-                                                for(DirBox d : directories){
-                                                    if(d.folderDir.getText().equals(checkString)){ 
-                                                        base = d.folderDir.getText();
-                                                        if(d.asDir.isSelected()){
-                                                            String[] baseParts = base.split("\\\\");
-                                                            ext += "\\" +  baseParts[baseParts.length-1];
-                                                        }
-                                                        break outerloop;
+            Task task = new Task<Void>(){
+                @Override
+                public Void call(){
+                    try{
+                        WatchKey watchKey;
+                        while((watchKey = watcher.take()) != null){
+                            for(WatchEvent e : watchKey.pollEvents()){
+                                // gets directory of the event
+                                Path eventDir = (Path)watchKey.watchable();
+                                // add to the context and you have the file that has changed.
+                                File editFile = new File(eventDir + "\\" + e.context());                               
+                                if(editFile.exists()){
+                                    if(e.kind() == StandardWatchEventKinds.ENTRY_CREATE){
+                                        // This section checks the base directories to know where to copy the file
+                                        String base = "";
+                                        String ext = "";
+                                        String[] dirParts = eventDir.toString().split("\\\\");
+                                        String checkString = dirParts[0];
+                                        outerloop:
+                                        for(int i = 1; i <= dirParts.length; i++){
+                                            System.out.println("Check String: " + checkString);
+                                            for(DirBox d : directories){
+                                                if(d.folderDir.getText().equals(checkString)){ 
+                                                    base = d.folderDir.getText();
+                                                    if(d.asDir.isSelected()){
+                                                        String[] baseParts = base.split("\\\\");
+                                                        ext += "\\" +  baseParts[baseParts.length-1];
                                                     }
-                                                }
-                                                checkString += "\\" + dirParts[i];
-                                            }
-                                            ext += editFile.getPath().replace(base, "");
-                                            System.out.println("new Path: " + hostDir.getText()+ext);
-
-                                            File newFile = new File(hostDir.getText()+ext);
-                                            if(!editFile.isDirectory()){
-                                                    FileUtils.copyFile(editFile, newFile);
-                                            }else{
-                                                FileUtils.copyDirectory(editFile, newFile);
-                                                Files.walkFileTree(Paths.get(editFile.getPath()), new SimpleFileVisitor<Path>(){
-                                                    @Override
-                                                    public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs) throws IOException{
-                                                        path.register(watcher, StandardWatchEventKinds.ENTRY_CREATE,
-                                                                StandardWatchEventKinds.ENTRY_MODIFY,
-                                                                StandardWatchEventKinds.ENTRY_DELETE);
-                                                        return CONTINUE;
-                                                    }
-                                                });
-                                            }
-                                            copiedFiles.add(new FilePair(editFile,newFile));
-                                            System.out.println();
-                                        }
-                                        if(e.kind() == StandardWatchEventKinds.ENTRY_MODIFY){
-//                                            if a file has changed
-                                            for(FilePair p : copiedFiles){
-                                                if(p.original.equals(editFile)){
-                                                    if(!editFile.isDirectory()){
-                                                        System.out.println("Modified: " + editFile.getPath());
-                                                        FileUtils.copyFile(p.original, p.copy);
-                                                    }
+                                                    break outerloop;
                                                 }
                                             }
+                                            checkString += "\\" + dirParts[i];
                                         }
-                                    }else{
-                                        if(e.kind() == StandardWatchEventKinds.ENTRY_DELETE){
-                                            //if a file has been removed
-                                            System.out.println("Deleted: " + editFile.getPath());    
-                                            for(FilePair p : copiedFiles){
-                                                if(p.original.equals(editFile)){
-                                                    if(!editFile.isDirectory()) FileUtils.deleteQuietly(p.copy);
-                                                    else FileUtils.deleteDirectory(p.copy);
+                                        ext += editFile.getPath().replace(base, "");
+                                        System.out.println("new Path: " + hostDir.getText()+ext);
+                                        
+                                        File newFile = new File(hostDir.getText()+ext);
+                                        if(!editFile.isDirectory()){
+                                                FileUtils.copyFile(editFile, newFile);
+                                        }else{
+                                            // if the new file is a directory copy it and register it for watching.
+                                            FileUtils.copyDirectory(editFile, newFile);
+                                            Files.walkFileTree(Paths.get(editFile.getPath()), new SimpleFileVisitor<Path>(){
+                                                @Override
+                                                public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs) throws IOException{
+                                                    path.register(watcher, StandardWatchEventKinds.ENTRY_CREATE,
+                                                            StandardWatchEventKinds.ENTRY_MODIFY,
+                                                            StandardWatchEventKinds.ENTRY_DELETE);
+                                                    return CONTINUE;
+                                                }
+                                            });
+                                        }
+                                        copiedFiles.add(new FilePair(editFile,newFile));
+                                        System.out.println();
+                                    }
+                                    if(e.kind() == StandardWatchEventKinds.ENTRY_MODIFY){
+                                           // if a file has changed reflect changes in the copy
+                                        for(FilePair p : copiedFiles){
+                                            if(p.original.equals(editFile)){
+                                                if(!editFile.isDirectory()){
+                                                    System.out.println("Modified: " + editFile.getPath());
+                                                    FileUtils.copyFile(p.original, p.copy);
                                                 }
                                             }
                                         }
                                     }
+                                }else{
+                                    if(e.kind() == StandardWatchEventKinds.ENTRY_DELETE){
+                                        //if a file has been removed, remove the copy.
+                                        System.out.println("Deleted: " + editFile.getPath());    
+                                        for(FilePair p : copiedFiles){
+                                            if(p.original.equals(editFile)){
+                                                if(!editFile.isDirectory()) FileUtils.deleteQuietly(p.copy);
+                                                else FileUtils.deleteDirectory(p.copy);
+                                            }
+                                        }
+                                    }
                                 }
-                                watchKey.reset();
                             }
-                        }catch(InterruptedException | IOException e){
-                            e.printStackTrace();
+                            watchKey.reset();
                         }
-                        catch(ClosedWatchServiceException e){
-                            System.out.println("Watcher Closed");
-                        }
-                        return null;
+                    }catch(InterruptedException | IOException e){
+                        e.printStackTrace();
                     }
-                };
-                Thread watchThread = new Thread(task);
-                watchThread.setDaemon(true);
-                watchThread.start();
+                    catch(ClosedWatchServiceException e){
+                        System.out.println("Watcher Closed");
+                    }
+                    return null;
+                }
+            };
+            Thread watchThread = new Thread(task);
+            //Ensure thread stops when the application stops.
+            watchThread.setDaemon(true);
+            watchThread.start();
 
         }catch(IOException e){
             System.out.println(e);
+            // Alert if any folders are missing.
             Alert alert = new Alert(AlertType.INFORMATION);
             alert.setTitle("Missing Directory");
             alert.setHeaderText(null);

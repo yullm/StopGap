@@ -1,4 +1,3 @@
-
 package stopgap;
 
 import java.io.File;

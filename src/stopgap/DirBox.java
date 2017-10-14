@@ -1,5 +1,9 @@
 package stopgap;
 
+/*
+    Simple Class for holding informatin about about child directories visually.
+*/
+
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
