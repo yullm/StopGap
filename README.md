@@ -1,7 +1,7 @@
 # Meglofriend's Stop Gap
 
 ## Stop Gap
-![banner](www.meglobot.com/blogimages/stopgapbanner1.png)
+![banner](https://www.meglobot.com/blogimages/stopgapbanner1.png)
 
 ## Description:
 
