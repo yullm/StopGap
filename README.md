@@ -2,12 +2,9 @@
 
 ## Stop Gap
 ![banner](http://www.meglobot.com/blogimages/stopgapbanner1.png)
-<<<<<<< HEAD
 
 ## Links
 [Meglofriend's Website](www.meglobot.com)
-=======
->>>>>>> origin/master
 
 ## Description:
 
