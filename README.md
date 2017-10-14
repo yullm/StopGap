@@ -38,7 +38,7 @@ Any errors are easily handled and presented to the user as directly as possible.
 
 ## Thoughts:
 
-Stop Gap has cleaned up my workflow, as intended, so I would considered it a successful project. The project also proved to be quite the learning process, especially when it came to dynamically adding new directories while the session is running. Most of my visual work is done through for the web so it was pretty cool to make a standalone application. 
+Stop Gap has cleaned up my workflow, as intended, so I would consider it a successful project. The project also proved to be quite the learning process, especially when it came to dynamically adding new directories while the session is running. Most of my visual work is done through for the web so it was pretty cool to make a standalone application. 
 
 Cheers,
 
