@@ -1,6 +1,5 @@
 # Meglofriend's Stop Gap
 
-## Stop Gap
 ![banner](http://www.meglobot.com/blogimages/stopgapbanner1.png)
 
 ## Links
