@@ -4,7 +4,7 @@
 ![banner](http://www.meglobot.com/blogimages/stopgapbanner1.png)
 
 ## Links
-[Meglofriend's Website](www.meglobot.com)
+[Meglofriend's Website](http://www.meglobot.com)
 
 ## Description:
 
