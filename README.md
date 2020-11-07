@@ -2,8 +2,9 @@
 
 ![banner](http://www.meglobot.com/stopgap/images/stopgapbanner1.png)
 
-## Links
+## Links:
 [Michael's Website](http://www.meglobot.com)
+[Michael's email](mailto: yull.michael14@gmail.com)
 
 ## Description:
 
