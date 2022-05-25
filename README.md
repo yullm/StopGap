@@ -1,9 +1,9 @@
 # Stop Gap
 
-![banner](http://www.meglobot.com/stopgap/images/stopgapbanner1.png)
+![banner](http://www.michaelyull.com/stopgap/images/stopgapbanner1.png)
 
 ## Links:
-[Michael's Website (meglobot.com)](http://www.meglobot.com)
+[Michael's Website (Michael Yull.com)](http://www.michaelyull.com)
 
 [Michael's email (yull.michael14@gmail.com)](mailto:yull.michael14@gmail.com)
 
@@ -25,11 +25,11 @@ Stop Gap has the ability to take multiple directories and combine them in a host
 
 Stop Gap is very simple to use. All you need to do is select a host directory then add any directories you would like copied over.
 
-![directories](http://www.meglobot.com/stopgap/images/stopgap2.png)
+![directories](http://www.michaelyull.com/stopgap/images/stopgap2.png)
 
 Directories can be typed in, or if you hit the button you will be able to select a folder from the file explorer. With the "Copy as Folder" option, you can choose whether you would like the directory to copy as a folder, or have contents added to the host folder directly. Directories can easily be removed by hitting the "X". If a configuration file has been selected any changes will automatically be saved.
 
-![Buttons](http://www.meglobot.com/stopgap/images/stopgap3.png)
+![Buttons](http://www.michaelyull.com/stopgap/images/stopgap3.png)
 
 The bottom bar holds the buttons for the application's base functions. Clicking the "+ Add Directory" will add another selector to the list of directories. The "Save" and "Load" buttons are used for storing and restoring configurations between uses. If a configuration has been saved, it will automatically be loaded on next use. The "Clear" button removes all settings to give the user a fresh start. Lastly, the "ACTIVATE" button freezes the controls and starts the session. Each folder is checked to be valid and if so, the folders are copied and maintained.
 
