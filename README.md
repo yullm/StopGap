@@ -3,7 +3,7 @@
 ![banner](http://www.michaelyull.com/stopgap/images/stopgapbanner1.png)
 
 ## Links:
-[Michael's Website (Michael Yull.com)](http://www.michaelyull.com)
+[Michael's Website (michaelyull.com)](http://www.michaelyull.com)
 
 [Michael's email (yull.michael14@gmail.com)](mailto:yull.michael14@gmail.com)
 
@@ -35,7 +35,7 @@ The bottom bar holds the buttons for the application's base functions. Clicking 
 
 Any errors are easily handled and presented to the user as directly as possible. 
 
-![Alert](http://www.meglobot.com/stopgap/images/stopgap4.png)
+![Alert](http://www.michaelyull.com/stopgap/images/stopgap4.png)
 
 ## Thoughts:
 
