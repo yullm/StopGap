@@ -53,3 +53,5 @@ commons-io-2.5
 Network Trash Folder
 Temporary Items
 .apdisk
+.vscode/launch.json
+.vscode/settings.json
